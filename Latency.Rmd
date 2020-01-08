@@ -1,0 +1,154 @@
+---
+title: "Latency and capacity estimation for a network connection from asymmetric measurements"
+output: html_document
+---
+
+## First Dataset
+
+1- Preparing the Data 
+
+uploading the Data 
+```{r}
+library(dplyr)
+df = read.table('liglab2.log', sep=' ' , na.strings = ""  , header=F , fill = TRUE  )
+```
+
+
+
+Selecting the usefull columns for our Analysing
+```{r}
+df = df %>% select(V1, V2, V9) 
+```
+
+
+
+Elemenating the lines with no available data
+```{r}
+library(tidyr)
+line_NA  = apply(df , 1 , function(x) any(is.na(x)))
+df = df %>% drop_na()
+```
+
+
+Change the name of columns
+```{r}
+colnames(df)=c('date' ,'size' , 'time' )
+```
+
+
+
+Convert Time 
+```{r}
+convertTime = function(time)
+  gsub("[^0-9.]", "", time)
+
+df$time = as.numeric(sapply(df$time , convertTime))
+```
+
+
+
+Convert Date 
+```{r}
+convertdate = function(date)
+  gsub("[^0-9.]", "", date)
+
+
+df$date = as.numeric(sapply(df$date , convertdate))
+```
+
+
+Ploting the Data 
+```{r}
+plot(time~size,df)
+```
+
+
+
+Calculating the means 
+```{r}
+mean.size = mean(df$size)
+mean.time = mean(df$time)
+
+mean.size
+mean.time
+```
+
+
+Ploting The mean 
+```{r}
+plot(time~size,df)
+abline(h=mean.time,col="Yellow")
+```
+
+Ploting the linear regression with the mean
+```{r}
+plot(time~size,df)
+mode=lm(time~size,df)
+abline(mode,col="red")
+abline(h=mean.time,col="Yellow")
+
+```
+
+
+
+The intercept of the mode 
+```{r}
+mode
+```
+
+
+The summary of the mode 
+```{r}
+summary(mode1)
+```
+
+
+
+Deviding Data 
+
+the first interval 
+```{r}
+df1 = subset(df,size<=1480&size>=0)
+plot(time~size,df1)
+mode1=lm(time~size,df1)
+abline(mode1,col="red")
+```
+
+The second interval
+
+```{r}
+df2 = subset(df,size>1480)
+plot(time~size,df2)
+mode2=lm(time~size,df2)
+abline(mode2,col="red")
+```
+
+
+The two modes
+```{r}
+mode1
+mode2
+```
+
+
+The summary of the two modes 
+```{r}
+summary(mode1)
+summary(mode2)
+```
+
+
+subploting both 
+```{r}
+library(ggplot2)
+library("quantreg")
+library(SparseM)
+
+p <- ggplot(data = df, mapping = aes(x =size, y = time))+
+geom_point() + geom_quantile(quantiles = 0.85, data=subset(df, size >= 1480), colour = "red", size = 2) +
+geom_quantile(quantiles = 0.85, data=subset(df, size < 1480), colour = "blue", size = 2)
+p
+```
+
+
+
