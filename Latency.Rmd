@@ -10,7 +10,7 @@ output: html_document
 uploading the Data 
 ```{r}
 library(dplyr)
-df = read.table('liglab2.log', sep=' ' , na.strings = ""  , header=F , fill = TRUE  )
+df = read.table('liglab2.log', sep=' ' , na.strings =""  , header=F , fill = TRUE  )
 ```
 
 
@@ -59,7 +59,8 @@ df$date = as.numeric(sapply(df$date , convertdate))
 
 Ploting the Data 
 ```{r}
-plot(time~size,df)
+head(df)
+plot(time~size,df, main="Ploting the time as a function of the packets size", col="brown4")
 ```
 
 
@@ -108,19 +109,28 @@ Deviding Data
 
 the first interval 
 ```{r}
+library(ggplot2)
 df1 = subset(df,size<=1480&size>=0)
-plot(time~size,df1)
-mode1=lm(time~size,df1)
-abline(mode1,col="red")
+ggplot(data = df1, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw() + coord_cartesian(ylim = c(0.25,7)) + ggtitle("The time as function of the size (size < 1480)")
+
 ```
+```{r}
+mode1 <- lm(data=df1, time~size)
+par(mfrow=c(2,2)); plot(mode1); par(mfrow=c(1,1))
+```
+
+
 
 The second interval
 
 ```{r}
 df2 = subset(df,size>1480)
-plot(time~size,df2)
-mode2=lm(time~size,df2)
-abline(mode2,col="red")
+ggplot(data = df2, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw() +
+  ggtitle("The time as function of the size (size > 1480)")
+```
+```{r}
+mode2 <- lm(data=df2, time~size)
+par(mfrow=c(2,2)); plot(mode2); par(mfrow=c(1,1))
 ```
 
 
@@ -140,15 +150,174 @@ summary(mode2)
 
 subploting both 
 ```{r}
-library(ggplot2)
-library("quantreg")
-library(SparseM)
-
-p <- ggplot(data = df, mapping = aes(x =size, y = time))+
-geom_point() + geom_quantile(quantiles = 0.85, data=subset(df, size >= 1480), colour = "red", size = 2) +
-geom_quantile(quantiles = 0.85, data=subset(df, size < 1480), colour = "blue", size = 2)
-p
+ggplot(data = df, mapping = aes(x =size, y = time)) + geom_point(col="brown4")+ geom_smooth(method='lm', data=df1, color= "black")+ geom_smooth(method='lm', data=df2, color= "yellow") + ggtitle("Superposing the results")
 ```
 
 
+
+
+
+Diffrent Approach 1 : Taking the minimum time per message size 
+
+
+```{r}
+df_min = unique(aggregate(time~size,df,min))
+df1_min = unique(aggregate(time~size,df1,min))
+ggplot(data = df1_min, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw()+
+  ggtitle("Linear regression for the size < 1480")
+
+```
+
+
+
+```{r}
+df2_min = unique(aggregate(time~size,df2,min))
+ggplot(data = df2_min, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw() + 
+ggtitle("Linear regression for the size > 1480")
+```
+
+```{r}
+mode1_min <- lm(data=df1_min, time~size)
+par(mfrow=c(2,2)); plot(mode1_min); par(mfrow=c(1,1))
+```
+
+```{r}
+mode2_min <- lm(data=df2_min, time~size)
+par(mfrow=c(2,2)); plot(mode2_min); par(mfrow=c(1,1))
+```
+```{r}
+summary(mode1_min)
+```
+
+```{r}
+summary(mode2_min)
+```
+
+subploting both 
+```{r}
+ggplot(data = df_min, mapping = aes(x =size, y = time)) + geom_point(col="brown4")+ geom_smooth(method='lm', data=df1_min, color= "black")+ geom_smooth(method='lm', data=df2_min, color= "yellow") + ggtitle("Superposing the results")
+```
+
+Diffrent Approach 2 : Taking the minimum time per message size
+
+```{r}
+q10 <- seq(0, 1, by = 0.1)
+ggplot(data = df1, mapping = aes(x = size, y = time)) +
+  geom_point(color="brown4") + 
+  geom_smooth(method='lm', color= "red") + theme_bw() +
+  geom_quantile (quantiles = q10, color="blue")+
+  ggtitle("Quantile regression for the size < 1480")
+```
+
+```{r}
+q10 <- seq(0, 1, by = 0.1)
+ggplot(data = df2, mapping = aes(x = size, y = time)) +
+  geom_point(color="brown4") + 
+  geom_smooth(method='lm', color= "red") + theme_bw() +
+  geom_quantile (quantiles = q10, color="blue") +
+  ggtitle("Quantile regression for the size > 1480")
+  
+```
+
+
+
+
+
+#### SECOND DATASET 
+```{r}
+df_1 = read.table('stackoverflow.log', sep=' ' , na.strings =""  , header=F , fill = TRUE  )
+```
+
+Clean the data: 
+```{r}
+df_1 = df_1 %>% select(V1, V2, V9) 
+library(tidyr)
+line_NA  = apply(df_1 , 1 , function(x) any(is.na(x)))
+df_1 = df_1 %>% drop_na()
+colnames(df_1)=c('date' ,'size' , 'time' )
+convertdate = function(date)
+  gsub("[^0-9.]", "", date)
+
+
+df_1$date = as.numeric(sapply(df_1$date , convertdate))
+
+convertTime = function(time)
+  gsub("[^0-9.]", "", time)
+
+df_1$time = as.numeric(sapply(df_1$time , convertTime))
+```
+
+Plot the data
+```{r}
+head(df_1)
+plot(time~size,df_1, main="Ploting the time as a function of the packets size", col="brown4")
+```
+
+
+Deviding Data 
+```{r}
+library(ggplot2)
+df_1.1 = subset(df_1,size<=1480&size>=0)
+ggplot(data = df_1.1, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw()  + ggtitle("The time as function of the size (size < 1480)")
+```
+
+```{r}
+df_1.2 = subset(df_1,size>1480)
+ggplot(data = df_1.2, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw() +
+  ggtitle("The time as function of the size (size > 1480)")
+```
+
+Checking the hypthesis
+```{r}
+mode_1.1 <- lm(data=df_1.1, time~size)
+par(mfrow=c(2,2)); plot(mode_1.1); par(mfrow=c(1,1))
+```
+```{r}
+mode_1.2 <- lm(data=df_1.2, time~size)
+par(mfrow=c(2,2)); plot(mode_1.2); par(mfrow=c(1,1))
+```
+
+
+Checking the model 
+```{r}
+summary(mode_1.1)
+summary(mode_1.2)
+```
+
+subploting both 
+```{r}
+ggplot(data = df_1, mapping = aes(x =size, y = time)) + geom_point(col="brown4")+ geom_smooth(method='lm', data=df_1.1, color= "black")+ geom_smooth(method='lm', data=df_1.2, color= "yellow") + ggtitle("Superposing the results")
+```
+
+
+Diffrent Approach 1 : Taking the minimum time per message size 
+
+
+```{r}
+df_1.1_min = unique(aggregate(time~size,df_1.1,min))
+ggplot(data = df_1.1_min, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw()+ coord_cartesian(ylim = c(110,115))+
+  ggtitle("Linear regression for the size < 1480")
+```
+```{r}
+df_1.2_min = unique(aggregate(time~size,df_1.2,min))
+ggplot(data = df_1.2_min, mapping = aes(x = size, y = time)) +geom_point(color="brown4") + geom_smooth(method='lm', color= "red") + theme_bw() + coord_cartesian(ylim = c(110,120)) +
+ggtitle("Linear regression for the size > 1480")
+```
+
+checking the hypothesis
+```{r}
+mode_1.1_min <- lm(data=df_1.1_min, time~size)
+par(mfrow=c(2,2)); plot(mode_1.1_min); par(mfrow=c(1,1))
+```
+```{r}
+mode_1.2_min <- lm(data=df_1.2_min, time~size)
+par(mfrow=c(2,2)); plot(mode_1.2_min); par(mfrow=c(1,1))
+```
+
+
+cheking the model 
+```{r}
+summary(mode_1.1_min)
+summary(mode_1.2_min)
+```
 
